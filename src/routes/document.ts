@@ -1,18 +1,20 @@
-const express = require('express');
-const jwt = require('jsonwebtoken');
-const fetchUser = require('../middleware/fetchUser');
-const Document = require('../model/Document');
-const { default: mongoose } = require('mongoose');
-const Permission = require('../model/Permission');
-const Request = require('../model/Request');
-require('dotenv').config();
+import express, { Request, Response } from 'express';
+import jwt, { Secret } from 'jsonwebtoken';
+import fetchUser from '../middleware/fetchUser';
+import Document from '../model/Document';
+import mongoose from 'mongoose';
+import Permission from '../model/Permission';
+import RequestModel from '../model/Request';
+import dotenv from 'dotenv';
+
+dotenv.config();
 
 const router = express.Router();
 
 // ROUTE 1: Create new Document: POST-'/api/document/new'
 router.post('/new',
     fetchUser,
-    async (req, res) => {
+    async (req: Request, res: Response) => {
         try {
             //Create New Note document
             const newDocument = {
@@ -21,7 +23,7 @@ router.post('/new',
             };
             //Create document, Permission & Admin
             const document = new Document(newDocument);
-            const permission = new Permission({ userId: req.user.id, documentId: document._id, write: true, isAdmin: true });
+            const permission = new Permission({ userId: req.headers['userId'], documentId: document._id, write: true, isAdmin: true });
             // const admin = new Admin({ userId: req.user.id, documentId: document._id });
 
             //Store Document & Permission
@@ -39,7 +41,7 @@ router.post('/new',
 
 // ROUTE 2: Read Document: GET-'/api/document/id/:id'
 router.get('/id/:id',
-    async (req, res) => {
+    async (req: Request, res: Response) => {
         try {
             const documentId = req.params.id;
             if (!mongoose.isValidObjectId(documentId)) {
@@ -50,12 +52,14 @@ router.get('/id/:id',
                 return res.status(404).json({ errors: "Document doesn't exist" });
             }
 
-            const token = req.header('auth-token');
+            const token = req.header('Authorization')?.replace('Bearer ', '');
+            if (!token) {
+                return res.status(401).send({ errors: "Please login in" });
+            }
 
             try {
-                const data = jwt.verify(token, process.env.JWT_SECRET);
-                req.user = data.user;
-                const userRequested = req.user.id;
+                const data = jwt.verify(token, process.env.JWT_SECRET as Secret) as { user: { id: string } };
+                const userRequested = data.user.id;
                 const hasPermission = await Permission.find({ documentId: documentId, userId: userRequested }).populate('documentId').exec();
 
                 if (hasPermission.length !== 0) {
@@ -85,7 +89,7 @@ router.get('/id/:id',
 // ROUTE 3: Update Document: PUT-'/api/document/id/:id'
 router.put('/id/:id',
     fetchUser,
-    async (req, res) => {
+    async (req: Request, res: Response) => {
         try {
             const documentId = req.params.id;
             if (!isQuillFormat(req.body.document)) {
@@ -101,7 +105,7 @@ router.put('/id/:id',
                 return res.status(404).json({ errors: "Document does not exist" });
             }
             //If the user changing has WRITE access
-            const permission = await Permission.find({ userId: req.user.id, documentId: documentId });
+            const permission = await Permission.find({ userId: req.headers['userId'], documentId: documentId });
             if (permission.length === 0 || permission[0].write === false) {
                 return res.status(401).json({ errors: "Unauthorized" });
             }
@@ -118,7 +122,7 @@ router.put('/id/:id',
 // ROUTE 4: Delete Document: DELETE-'/api/document/id/:id'
 router.delete('/id/:id',
     fetchUser,
-    async (req, res) => {
+    async (req: Request, res: Response                                  ) => {
         try {
             const documentId = req.params.id;
             //Check for valid ObjectID
@@ -131,7 +135,7 @@ router.delete('/id/:id',
                 return res.status(404).json({ errors: "Document does not exist" });
             }
             //If the user changing has WRITE access
-            const permission = await Permission.find({ userId: req.user.id, documentId: documentId });
+            const permission = await Permission.find({ userId: req.headers['userId'], documentId: documentId });
             if (permission.length === 0 || permission[0].isAdmin === false) {
                 return res.status(401).json({ errors: "Unauthorized" });
             }
@@ -139,7 +143,7 @@ router.delete('/id/:id',
             //TODO, DELETE CORRESPONDING USERS, Permissions, Admins
             await Document.findByIdAndDelete(documentId);
             await Permission.deleteMany({ documentId: documentId });
-            await Request.deleteMany({ documentId: documentId });
+            await RequestModel.deleteMany({ documentId: documentId });
 
             res.json({ success: `Deleted Successfully` });
 
@@ -152,7 +156,7 @@ router.delete('/id/:id',
 // ROUTE 5: Update Document Title: PATCH-'/api/document/title/id/:id'
 router.patch('/title/id/:id',
     fetchUser,
-    async (req, res) => {
+    async (req: Request, res: Response) => {
         try {
             const documentId = req.params.id;
             //Check for valid ObjectID
@@ -165,7 +169,7 @@ router.patch('/title/id/:id',
                 return res.status(404).json({ errors: "Document does not exist" });
             }
             //If the user changing has WRITE access
-            const permission = await Permission.find({ userId: req.user.id, documentId: documentId });
+            const permission = await Permission.find({ userId: req.headers['userId'], documentId: documentId });
             if (permission.length === 0 || permission[0].isAdmin === false) {
                 return res.status(401).json({ errors: "Unauthorized" });
             }
@@ -183,9 +187,9 @@ router.patch('/title/id/:id',
 // ROUTE 6: Document List: GET-'/api/document/list'
 router.get('/list',
     fetchUser,
-    async (req, res) => {
+    async (req:Request, res: Response) => {
         try {
-            const document = await Permission.find({ userId: req.user.id }).populate('documentId').exec();
+            const document = await Permission.find({ userId: req.headers['userId'] }).populate('documentId').exec();
             res.json(document);
         } catch (error) {
             return res.status(500).json({ errors: error });
@@ -196,7 +200,7 @@ router.get('/list',
 // ROUTE 7: Change Document Access: PUT-'/api/document/access/id/:id'
 router.put('/access/id/:id',
     fetchUser,
-    async (req, res) => {
+    async (req: Request, res: Response) => {
         try {
             const documentId = req.params.id;
             if (typeof req.body.private !== 'boolean')
@@ -211,7 +215,7 @@ router.put('/access/id/:id',
                 return res.status(404).json({ errors: "Document does not exist" });
             }
             //If the user changing has WRITE access
-            const permission = await Permission.find({ userId: req.user.id, documentId: documentId });
+            const permission = await Permission.find({ userId: req.headers['userId'], documentId: documentId });
             if (permission.length === 0 || permission[0].isAdmin === false) {
                 return res.status(401).json({ errors: "Unauthorized" });
             }
@@ -225,7 +229,7 @@ router.put('/access/id/:id',
     }
 );
 
-function isQuillFormat(obj) {
+function isQuillFormat(obj: any) {
     // Check if the object has an `ops` property
     if (obj && Array.isArray(obj.ops)) {
         // Additional checks can be added here based on the expected structure of `ops`
@@ -234,4 +238,4 @@ function isQuillFormat(obj) {
     return false; // Object is not in Quill format
 }
 
-module.exports = router;
+export default router;

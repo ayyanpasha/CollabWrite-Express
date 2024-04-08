@@ -1,7 +1,13 @@
-const { model } = require("mongoose");
-const { Schema } = require('mongoose');
+import { model, Schema, Document, Model } from "mongoose";
 
-const UserSchema = new Schema({
+interface IUser extends Document {
+    name: string;
+    email: string;
+    password: string;
+    date: Date;
+}
+
+const UserSchema: Schema = new Schema<IUser>({
     name: {
         type: String,
         required: true
@@ -21,6 +27,6 @@ const UserSchema = new Schema({
     }
 });
 
-const User = model('User', UserSchema);
+const User: Model<IUser> = model<IUser>('User', UserSchema);
 User.createIndexes();
-module.exports = User;
+export default User;

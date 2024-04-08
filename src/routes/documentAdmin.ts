@@ -1,16 +1,17 @@
-const express = require('express');
-const fetchUser = require('../middleware/fetchUser');
-const Document = require('../model/Document');
-const { default: mongoose } = require('mongoose');
-const Permission = require('../model/Permission');
-require('dotenv').config();
+import express, { Request, Response } from 'express';
+import fetchUser from '../middleware/fetchUser';
+import mongoose from 'mongoose';
+import Permission from '../model/Permission';
+import dotenv from 'dotenv';
+
+dotenv.config();
 
 const router = express.Router();
 
 // ROUTE 1: Set Admin: PUT-'/api/document/admin/id/:id'
 router.put('/id/:id',
     fetchUser,
-    async (req, res) => {
+    async (req: Request, res: Response) => {
         try {
             const permissionId = req.params.id;
             //Check for valid ObjectID
@@ -23,7 +24,7 @@ router.put('/id/:id',
                 return res.status(404).json({ errors: "Invalid" });
             }
             //If the user changing is ADMIN
-            const userRequesting = await Permission.find({ userId: req.user.id, documentId: permission.documentId })
+            const userRequesting = await Permission.find({ userId: req.headers['userId'], documentId: permission.documentId })
             if (userRequesting.length === 0 || userRequesting[0].isAdmin === false) {
                 return res.status(401).json({ errors: "Unauthorized" });
             }
@@ -37,4 +38,4 @@ router.put('/id/:id',
     }
 );
 
-module.exports = router;
+export default router;

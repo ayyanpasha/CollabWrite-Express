@@ -20,6 +20,14 @@
     "express-validator": "^7.0.1",
     "jsonwebtoken": "^9.0.2",
     "mongoose": "^8.2.1",
-    "nodemon": "^3.1.0"
+    "nodemon": "^3.1.0",
+    "tsc": "^2.0.4",
+    "typescript": "^5.4.4"
+  },
+  "devDependencies": {
+    "@types/bcryptjs": "^2.4.6",
+    "@types/cors": "^2.8.17",
+    "@types/express": "^4.17.21",
+    "@types/jsonwebtoken": "^9.0.6"
   }
 }

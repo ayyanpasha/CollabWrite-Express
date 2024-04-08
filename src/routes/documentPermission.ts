@@ -1,15 +1,17 @@
-const express = require('express');
-const fetchUser = require('../middleware/fetchUser');
-const { default: mongoose } = require('mongoose');
-const Permission = require('../model/Permission');
-const Admin = require('../model/Admin');
-require('dotenv').config();
+import express,{Request, Response} from 'express';
+import fetchUser from '../middleware/fetchUser';
+import mongoose from 'mongoose';
+import Permission from '../model/Permission';
+// import Admin from '../model/Admin';
+import dotenv from 'dotenv';
+
+dotenv.config();
 
 const router = express.Router();
 // ROUTE 1: Update Permission: PUT-'/api/document/permission/id/:id'
 router.put('/id/:id',
     fetchUser,
-    async (req, res) => {
+    async (req: Request, res: Response) => {
         try {
             const permissionId = req.params.id;
             const write = req.body.write;
@@ -21,7 +23,7 @@ router.put('/id/:id',
                 return res.status(404).json({ errors: "User doesn't control this document" });
             }
 
-            const userRequesing = await Permission.find({ userId: req.user.id, documentId: permission.documentId });
+            const userRequesing = await Permission.find({ userId: req.headers['userId'], documentId: permission.documentId });
 
             if (userRequesing.length === 0 || userRequesing[0].isAdmin === false) {
 
@@ -43,44 +45,44 @@ router.put('/id/:id',
     }
 );
 
-// ROUTE 2: Delete Permission: DELETE-'/api/document/permission/id/:id'
-router.delete('/id/:id',
-    fetchUser,
-    async (req, res) => {
-        try {
-            const permissionId = req.params.id;
-            if (!mongoose.isValidObjectId(permissionId)) {
-                return res.status(404).json({ errors: "User doesn't controll this document" });
-            }
-            const permission = await Permission.findById(permissionId);
-            if (!permission) {
-                return res.status(404).json({ errors: "User doesn't controll this document" });
-            }
+// // ROUTE 2: Delete Permission: DELETE-'/api/document/permission/id/:id'
+// router.delete('/id/:id',
+//     fetchUser,
+//     async (req: Request, res: Response) => {
+//         try {
+//             const permissionId = req.params.id;
+//             if (!mongoose.isValidObjectId(permissionId)) {
+//                 return res.status(404).json({ errors: "User doesn't controll this document" });
+//             }
+//             const permission = await Permission.findById(permissionId);
+//             if (!permission) {
+//                 return res.status(404).json({ errors: "User doesn't controll this document" });
+//             }
 
-            const admin = await Admin.find({ userId: req.user.id, documentId: permission.documentId });
-            if (!admin) {
-                return res.status(401).json({ errors: "Unauthorized" });
-            }
+//             const admin = await Admin.find({ userId: req.user.id, documentId: permission.documentId });
+//             if (!admin) {
+//                 return res.status(401).json({ errors: "Unauthorized" });
+//             }
 
-            await Permission.findByIdAndDelete(permissionId);
-            res.json({ success: `Permission Deleted` });
+//             await Permission.findByIdAndDelete(permissionId);
+//             res.json({ success: `Permission Deleted` });
 
-        } catch (error) {
-            return res.status(500).json({ errors: `Document doesn't exist/Internal Server Error` });
-        }
-    }
-);
+//         } catch (error) {
+//             return res.status(500).json({ errors: `Document doesn't exist/Internal Server Error` });
+//         }
+//     }
+// );
 
 // ROUTE 3: Get Permissioned Users: GET-'/api/document/permission/id/:id'
 router.get('/id/:id',
     fetchUser,
-    async (req, res) => {
+    async (req: Request, res: Response) => {
         try {
             const documentId = req.params.id;
             if (!mongoose.isValidObjectId(documentId)) {
                 return res.status(404).json({ errors: "User doesn't control this document" });
             }
-            const permission = await Permission.find({ userId: req.user.id, documentId: documentId });
+            const permission = await Permission.find({ userId: req.headers['userId'], documentId: documentId });
             if (permission.length === 0 || permission[0].isAdmin === false) {
                 return res.status(401).json({ errors: "Unauthorized" });
             }
@@ -95,4 +97,4 @@ router.get('/id/:id',
 );
 
 
-module.exports = router;
+export default router;
