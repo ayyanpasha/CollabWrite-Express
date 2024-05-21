@@ -19,19 +19,18 @@ const validationSignup = [
 // ROUTE 1: Create new User: POST-'/api/auth/signup'
 router.post('/signup', validationSignup, async (req: Request, res: Response) => {
     try {
-
         const errors = validationResult(req);
         if (!errors.isEmpty()) {
             return res.status(400).json({ errors: errors.array() });
         }
         req.body.email = req.body.email.toLowerCase();
         const { name, email, password } = req.body;
-
+        
         let user = await User.findOne({ email });
         if (user) {
             return res.status(400).json({ errors: "User with this email already exists" });
         }
-
+        
         const hashedPassword = await bcrypt.hash(password, 10);
         user = await User.create({ name, email, password: hashedPassword });
 
@@ -59,6 +58,7 @@ router.post('/login', validateLoginUserInput, async (req: Request, res: Response
         req.body.email = req.body.email.toLowerCase();
         const { email, password } = req.body;
         let user = await User.findOne({ email });
+        
         if (!user || !(await bcrypt.compare(password, user.password))) {
             return res.status(400).json({ errors: "Invalid credentials" });
         }
